@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ORBITAL INSIGHT AI // STARK INDUSTRIES</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Exo+2:wght@100;300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cyan: #00f5ff;
+    --cyan-glow: rgba(0,245,255,0.5);
+    --magenta: #ff00cc;
+    --amber: #ffaa00;
+    --bg: #020810;
+    --panel: rgba(5,12,25,0.94);
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Orbitron', sans-serif;
+    --body: 'Exo 2', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--cyan);
+    font-family: var(--body);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+
+  #bgCanvas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* scanlines */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.06) 2px, rgba(0,0,0,0.06) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.88) 100%);
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ===== TOP BAR ===== */
+  .top-bar {
+    position: relative;
+    z-index: 10;
+    height: 72px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid rgba(0,245,255,0.12);
+    background: linear-gradient(180deg, rgba(0,245,255,0.05) 0%, transparent 100%);
+    flex-shrink: 0;
+  }
+
+  .top-bar::before, .top-bar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    height: 2px;
+    width: 28%;
+    background: linear-gradient(90deg, transparent, var(--cyan));
+    box-shadow: 0 0 14px var(--cyan);
+  }
+  .top-bar::before { left: 0; background: linear-gradient(90deg, transparent, var(--cyan)); animation: barIn 1.2s ease forwards; transform-origin: left; }
+  .top-bar::after  { right: 0; background: linear-gradient(270deg, transparent, var(--cyan)); animation: barIn 1.2s ease forwards; transform-origin: right; }
+  @keyframes barIn { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  .logo-cluster {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .arc-reactor {
+    width: 38px; height: 38px;
+    animation: reactorPulse 6s ease-in-out infinite;
+  }
+  @keyframes reactorPulse {
+    0%,100% { filter: drop-shadow(0 0 5px var(--cyan)); }
+    50%      { filter: drop-shadow(0 0 18px var(--magenta)) drop-shadow(0 0 35px var(--cyan)); }
+  }
+
+  .main-title {
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 9px;
+    background: linear-gradient(90deg, var(--cyan), #fff, var(--magenta), var(--cyan));
+    background-size: 300% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 5s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: 300% center; } }
+
+  .sub-title {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: rgba(0,245,255,0.4);
+    letter-spacing: 5px;
+  }
+
+  .top-side {
+    position: absolute;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: rgba(0,245,255,0.35);
+    letter-spacing: 1px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .top-side.left { left: 28px; }
+  .top-side.right { right: 28px; }
+
+  .dot {
+    display: inline-block;
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+    margin-right: 4px;
+    animation: blink 1.6s infinite;
+  }
+  .dot.mag { background: var(--magenta); box-shadow: 0 0 6px var(--magenta); animation-delay: 0.4s; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  /* ===== MAIN LAYOUT ===== */
+  .main-wrap {
+    position: relative;
+    z-index: 10;
+    flex: 1;
+    display: grid;
+    grid-template-columns: 180px 1fr 180px;
+    overflow: hidden;
+  }
+
+  /* ===== SIDE DECORATIVE PANELS ===== */
+  .side-panel {
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    opacity: 0.75;
+  }
+  .side-panel.left  { border-right: 1px solid rgba(0,245,255,0.07); }
+  .side-panel.right { border-left:  1px solid rgba(0,245,255,0.07); }
+
+  .sp-title {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 3px;
+    color: rgba(0,245,255,0.35);
+    text-transform: uppercase;
+    padding-bottom: 5px;
+    border-bottom: 1px solid rgba(0,245,255,0.08);
+  }
+
+  .mini-metric {
+    padding: 8px 10px;
+    border: 1px solid rgba(0,245,255,0.07);
+    border-left: 2px solid rgba(0,245,255,0.25);
+    background: rgba(0,245,255,0.01);
+  }
+  .mm-label { font-family: var(--mono); font-size: 7px; color: rgba(255,255,255,0.3); letter-spacing: 2px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .mm-val   { font-family: var(--display); font-size: 15px; font-weight: 700; color: var(--cyan); text-shadow: 0 0 10px var(--cyan-glow); }
+  .mm-bar   { height: 2px; background: rgba(0,245,255,0.07); margin-top: 6px; }
+  .mm-fill  { height: 100%; background: linear-gradient(90deg, var(--cyan), var(--magenta)); box-shadow: 0 0 6px var(--cyan); }
+
+  /* Radar (right panel) */
+  .radar-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .radar-scope { width: 130px; height: 130px; }
+  .radar-sweep-g { transform-origin: 65px 65px; animation: sweep 4s linear infinite; }
+  @keyframes sweep { from{transform:rotate(0)} to{transform:rotate(360deg)} }
+  .r-blip { animation: blipFade 4s infinite; }
+  @keyframes blipFade { 0%,100%{opacity:0} 50%{opacity:1} }
+
+  .sdg-list { font-family: var(--mono); font-size: 7px; color: rgba(0,245,255,0.4); line-height: 1.9; width: 100%; }
+  .sdg-row  { display: flex; justify-content: space-between; border-bottom: 1px solid rgba(0,245,255,0.05); padding: 1px 0; }
+  .sdg-row .v { color: var(--amber); }
+  .sdg-row.hi .v { color: var(--cyan); text-shadow: 0 0 6px var(--cyan); }
+
+  /* ===== CENTER STAGE ===== */
+  .center-stage {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 20px 24px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    pointer-events: all;
+    position: relative;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,245,255,0.2) transparent;
+  }
+  .center-stage::-webkit-scrollbar { width: 4px; }
+  .center-stage::-webkit-scrollbar-track { background: transparent; }
+  .center-stage::-webkit-scrollbar-thumb { background: rgba(0,245,255,0.2); border-radius: 2px; }
+
+  /* subtle corner ticks */
+  .center-stage::before, .center-stage::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 20px;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .center-stage::before { top: 8px; left: 8px; border-top: 1px solid var(--magenta); border-left: 1px solid var(--magenta); opacity: 0.4; }
+  .center-stage::after  { bottom: 8px; right: 8px; border-bottom: 1px solid var(--magenta); border-right: 1px solid var(--magenta); opacity: 0.4; }
+
+  /* ===== HOLOGRAM CARD ===== */
+  .holo-card {
+    width: 100%;
+    max-width: 700px;
+    background: var(--panel);
+    border: 1px solid rgba(0,245,255,0.18);
+    border-top: 1px solid rgba(0,245,255,0.4);
+    padding: 44px 48px 52px;
+    position: relative;
+    clip-path: polygon(0 18px,18px 0,calc(100% - 18px) 0,100% 18px,100% calc(100% - 18px),calc(100% - 18px) 100%,18px 100%,0 calc(100% - 18px));
+    box-shadow: 0 0 0 1px rgba(0,245,255,0.04), inset 0 0 80px rgba(0,245,255,0.025), 0 30px 100px rgba(0,0,0,0.9);
+    margin: auto 0;
+  }
+
+  .holo-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(0,245,255,0.03) 0%, transparent 55%, rgba(255,0,204,0.02) 100%);
+    pointer-events: none;
+  }
+
+  /* glowing corner dots */
+  .cc {
+    position: absolute;
+    width: 8px; height: 8px;
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan), 0 0 24px var(--cyan-glow);
+    animation: ccPulse 2s infinite alternate;
+  }
+  @keyframes ccPulse { from{opacity:0.5} to{opacity:1} }
+  .cc.tl { top: 5px; left: 5px; }
+  .cc.tr { top: 5px; right: 5px; }
+  .cc.bl { bottom: 5px; left: 5px; }
+  .cc.br { bottom: 5px; right: 5px; }
+
+  /* laser sweep */
+  .laser {
+    position: absolute;
+    left: 0; width: 100%; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--cyan) 30%, #fff 50%, var(--magenta) 70%, transparent);
+    box-shadow: 0 0 18px var(--cyan), 0 0 40px var(--cyan-glow);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 30;
+    top: 0;
+  }
+  .laser.on { opacity: 1; animation: laserDown 1.6s ease-in-out forwards; }
+  @keyframes laserDown { 0%{top:0;opacity:1} 85%{opacity:1} 100%{top:100%;opacity:0} }
+
+  /* particles */
+  .pfield { position: absolute; inset: 0; pointer-events: none; overflow: hidden; opacity: 0; transition: opacity 0.3s; }
+  .pfield.on { opacity: 1; }
+  .pt { position: absolute; width: 2px; height: 2px; background: var(--cyan); border-radius: 50%; animation: ptFloat linear infinite; box-shadow: 0 0 4px var(--cyan); }
+  @keyframes ptFloat {
+    0%   { transform: translateY(100%) translateX(0); opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { transform: translateY(-30px) translateX(var(--dx,0)); opacity: 0; }
+  }
+
+  /* ===== SECTION LABEL ===== */
+  .slabel {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: rgba(0,245,255,0.45);
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .slabel::before { content:''; width: 22px; height: 1px; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); }
+
+  /* ===== INPUT ===== */
+  .input-wrap { position: relative; margin-bottom: 18px; }
+
+  .input-wrap input {
+    width: 100%;
+    padding: 22px 70px 22px 56px;
+    background: rgba(0,8,22,0.85);
+    border: 1px solid rgba(0,245,255,0.18);
+    border-top: 1px solid rgba(0,245,255,0.45);
+    color: rgba(220,240,255,0.92);
+    font-family: var(--mono);
+    font-size: 15px;
+    letter-spacing: 1px;
+    outline: none;
+    transition: all 0.3s;
+    clip-path: polygon(0 7px,7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%);
+  }
+  .input-wrap input::placeholder { color: rgba(0,245,255,0.2); font-size: 12px; letter-spacing: 3px; }
+  .input-wrap input:focus {
+    border-color: rgba(0,245,255,0.55);
+    background: rgba(0,18,40,0.92);
+    box-shadow: 0 0 30px rgba(0,245,255,0.08), inset 0 0 20px rgba(0,245,255,0.025);
+  }
+  .input-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    height: 1px;
+    width: 0;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    transition: width 0.4s;
+  }
+  .input-wrap:focus-within::after { width: 100%; }
+
+  .in-icon {
+    position: absolute; left: 18px; top: 50%; transform: translateY(-50%);
+    opacity: 0.5; pointer-events: none;
+  }
+  .char-c {
+    position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
+    font-family: var(--mono); font-size: 9px; color: rgba(0,245,255,0.25); letter-spacing: 1px;
+  }
+
+  /* ===== BUTTON ===== */
+  .go-btn {
+    width: 100%;
+    padding: 22px;
+    background: transparent;
+    border: 1px solid rgba(0,245,255,0.4);
+    border-top: 2px solid var(--cyan);
+    color: var(--cyan);
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 13px;
+    letter-spacing: 7px;
+    text-transform: uppercase;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s;
+    clip-path: polygon(0 7px,7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%);
+  }
+  .go-btn::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(0,245,255,0.12), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+  }
+  .go-btn:hover::before { transform: translateX(100%); }
+  .go-btn:hover {
+    background: rgba(0,245,255,0.07);
+    box-shadow: 0 0 50px rgba(0,245,255,0.25), inset 0 0 20px rgba(0,245,255,0.04);
+  }
+  .go-btn.busy {
+    pointer-events: none;
+    border-color: var(--magenta);
+    color: var(--magenta);
+    letter-spacing: 5px;
+    animation: btnBusy 0.6s infinite alternate;
+  }
+  @keyframes btnBusy { from{box-shadow:0 0 10px rgba(255,0,204,0.2)} to{box-shadow:0 0 35px rgba(255,0,204,0.55)} }
+
+  .btn-pips { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); display: flex; gap: 5px; }
+  .pip { width: 5px; height: 5px; background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pipPulse 1s infinite; }
+  .pip:nth-child(2){animation-delay:.2s} .pip:nth-child(3){animation-delay:.4s}
+  @keyframes pipPulse { 0%,100%{opacity:0.3} 50%{opacity:1} }
+
+  /* ===== RESULTS ===== */
+  .results {
+    margin-top: 34px;
+    border-top: 1px solid rgba(0,245,255,0.08);
+    padding-top: 28px;
+    display: none;
+  }
+  .results.show { display: block; animation: fadeUp 0.5s ease forwards; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  /* 2-col data grid */
+  .data-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+  .dcell {
+    padding: 16px 18px;
+    background: rgba(0,0,0,0.45);
+    border: 1px solid rgba(0,245,255,0.08);
+    border-left: 3px solid rgba(0,245,255,0.4);
+    animation: revealC 0.4s ease backwards;
+  }
+  .dcell:nth-child(2) { animation-delay: 0.12s; }
+  @keyframes revealC { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+
+  .dc-label { font-family: var(--mono); font-size: 9px; color: rgba(255,255,255,0.28); letter-spacing: 3px; margin-bottom: 8px; text-transform: uppercase; }
+  .dc-val   { font-family: var(--display); font-weight: 700; font-size: 26px; }
+  .dc-val.sdg  { color: var(--amber); text-shadow: 0 0 14px rgba(255,170,0,0.5); }
+  .dc-val.conf { color: #00ff88;      text-shadow: 0 0 14px rgba(0,255,136,0.5); font-size: 28px; }
+
+  /* keywords */
+  .kw-area { margin-bottom: 18px; }
+  .kw-row  { display: flex; flex-wrap: wrap; gap: 7px; }
+  .kw-tag  {
+    font-family: var(--mono); font-size: 10px; color: var(--cyan);
+    border: 1px solid rgba(0,245,255,0.3); padding: 5px 12px; letter-spacing: 1px;
+    background: rgba(0,245,255,0.04);
+    clip-path: polygon(0 4px,4px 0,100% 0,100% calc(100% - 4px),calc(100% - 4px) 100%,0 100%);
+    animation: tagIn 0.35s ease backwards;
+    text-transform: uppercase;
+  }
+  @keyframes tagIn { from{opacity:0;transform:scale(0.85)} to{opacity:1;transform:scale(1)} }
+
+  /* impact */
+  .impact-wrap { margin-bottom: 18px; }
+  .impact-hdr  { font-family: var(--mono); font-size: 9px; color: rgba(0,245,255,0.4); letter-spacing: 3px; display: flex; justify-content: space-between; margin-bottom: 8px; }
+  .impact-val  { color: var(--cyan); }
+  .segs        { display: flex; gap: 4px; }
+  .seg {
+    flex: 1; height: 20px;
+    background: rgba(0,245,255,0.04);
+    border: 1px solid rgba(0,245,255,0.09);
+    transition: all 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .seg.on {
+    background: rgba(0,245,255,0.18);
+    border-color: rgba(0,245,255,0.4);
+    box-shadow: 0 0 8px rgba(0,245,255,0.25);
+  }
+  .seg.on::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    animation: segShine 2s infinite;
+  }
+  @keyframes segShine { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+  /* insight */
+  .insight {
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(255,0,204,0.2);
+    border-left: 4px solid var(--magenta);
+    padding: 28px 28px;
+    position: relative;
+    box-shadow: 0 0 30px rgba(255,0,204,0.06), inset 0 0 30px rgba(255,0,204,0.02);
+  }
+  .insight::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,0,204,0.025) 0%, transparent 60%);
+  }
+  .insight-hdr {
+    font-family: var(--mono);
+    font-size: 10px; color: var(--magenta); letter-spacing: 4px;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+    text-shadow: 0 0 12px rgba(255,0,204,0.6);
+  }
+  .insight-hdr::after { content:''; flex:1; height:1px; background: linear-gradient(90deg, rgba(255,0,204,0.3), transparent); }
+  .insight-txt {
+    font-family: var(--body);
+    font-size: 16px; font-weight: 400;
+    color: rgba(230,245,255,0.92);
+    line-height: 1.85;
+    letter-spacing: 0.4px;
+    position: relative;
+  }
+  .cursor { display:inline-block; width:9px; height:16px; background:var(--magenta); animation:cblink 0.8s infinite; vertical-align:middle; margin-left:3px; }
+  @keyframes cblink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* shimmer placeholders */
+  .shim { height:12px; background:linear-gradient(90deg,rgba(0,245,255,0.04) 0%,rgba(0,245,255,0.12) 50%,rgba(0,245,255,0.04) 100%); background-size:200% 100%; animation:shimAnim 1.4s infinite; margin-bottom:10px; border-radius:1px; }
+  @keyframes shimAnim { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
+
+  /* ===== BOTTOM BAR ===== */
+  .bot-bar {
+    position: relative; z-index: 10;
+    height: 48px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 28px;
+    border-top: 1px solid rgba(0,245,255,0.09);
+    background: linear-gradient(0deg, rgba(0,245,255,0.03) 0%, transparent 100%);
+    flex-shrink: 0;
+  }
+  .ticker { font-family: var(--mono); font-size: 9px; color: rgba(0,245,255,0.3); letter-spacing: 2px; overflow: hidden; flex: 1; white-space: nowrap; }
+  .ticker-inner { display:inline-block; animation:tick 28s linear infinite; padding-left:100%; }
+  @keyframes tick { 0%{transform:translateX(0)} 100%{transform:translateX(-100%)} }
+  .bot-right { font-family: var(--mono); font-size: 8px; color: rgba(0,245,255,0.3); letter-spacing: 2px; display:flex; gap:14px; }
+  #liveClock { font-family: var(--mono); font-size: 10px; color: rgba(0,245,255,0.5); letter-spacing: 2px; }
+
+  /* error flash */
+  .eflash { position:fixed; inset:0; background:rgba(255,0,0,0.04); pointer-events:none; z-index:998; animation:efl 0.45s ease forwards; }
+  @keyframes efl { 0%,100%{opacity:0} 50%{opacity:1} }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div class="top-side left">
+    <span><span class="dot"></span>SYS_ONLINE</span>
+    <span id="liveClock">00:00:00</span>
+  </div>
+
+  <div class="logo-cluster">
+    <svg class="arc-reactor" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="46" stroke="rgba(0,245,255,0.12)" stroke-width="1" fill="none"/>
+      <circle cx="50" cy="50" r="40" stroke="rgba(0,245,255,0.35)" stroke-width="1.5" fill="none"/>
+      <circle cx="50" cy="50" r="28" stroke="rgba(255,0,204,0.55)" stroke-width="2" fill="none" stroke-dasharray="5 4"/>
+      <circle cx="50" cy="50" r="15" stroke="rgba(0,245,255,0.8)" stroke-width="3" fill="rgba(0,245,255,0.06)"/>
+      <circle cx="50" cy="50" r="5" fill="rgba(0,245,255,0.95)" style="filter:drop-shadow(0 0 8px #00f5ff)"/>
+      <line x1="50" y1="4" x2="50" y2="19" stroke="#00f5ff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="50" y1="81" x2="50" y2="96" stroke="#00f5ff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="4"  y1="50" x2="19" y2="50" stroke="#00f5ff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="81" y1="50" x2="96" y2="50" stroke="#00f5ff" stroke-width="2" stroke-linecap="round"/>
+      <line x1="18" y1="18" x2="28" y2="28" stroke="rgba(0,245,255,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="72" y1="72" x2="82" y2="82" stroke="rgba(0,245,255,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="82" y1="18" x2="72" y2="28" stroke="rgba(0,245,255,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="28" y1="72" x2="18" y2="82" stroke="rgba(0,245,255,0.45)" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <div class="main-title">ORBITAL INSIGHT AI</div>
+    <div class="sub-title">STARK INDUSTRIES // NEURAL DIVISION</div>
+  </div>
+
+  <div class="top-side right">
+    <span>VER 4.7.2</span>
+    <span><span class="dot mag"></span>AI_ACTIVE</span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main-wrap">
+
+  <!-- LEFT DECORATIVE PANEL -->
+  <div class="side-panel left">
+    <div class="sp-title">SYSTEM VITALS</div>
+    <div class="mini-metric">
+      <div class="mm-label">NEURAL_LINK <span style="color:var(--cyan)">ON</span></div>
+      <div class="mm-val">94.7%</div>
+      <div class="mm-bar"><div class="mm-fill" style="width:94%"></div></div>
+    </div>
+    <div class="mini-metric">
+      <div class="mm-label">SAT_UPLINK <span style="color:var(--amber)">SEC</span></div>
+      <div class="mm-val">76.2%</div>
+      <div class="mm-bar"><div class="mm-fill" style="width:76%"></div></div>
+    </div>
+    <div class="mini-metric">
+      <div class="mm-label">CORE_TEMP <span style="color:#00ff88">NOM</span></div>
+      <div class="mm-val">41°C</div>
+      <div class="mm-bar"><div class="mm-fill" style="width:41%;background:linear-gradient(90deg,#00ff88,#00f5ff)"></div></div>
+    </div>
+    <div class="mini-metric" style="margin-top:4px;">
+      <div class="mm-label">CPU_LOAD</div>
+      <div class="mm-val">78%</div>
+      <div class="mm-bar"><div class="mm-fill" style="width:78%"></div></div>
+    </div>
+  </div>
+
+  <!-- CENTER: MAIN CARD -->
+  <div class="center-stage">
+    <div class="holo-card">
+      <div class="cc tl"></div><div class="cc tr"></div>
+      <div class="cc bl"></div><div class="cc br"></div>
+      <div class="laser" id="laser"></div>
+      <div class="pfield" id="pfield"></div>
+
+      <!-- INPUT -->
+      <div class="slabel">INPUT VECTOR</div>
+      <div class="input-wrap">
+        <div class="in-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(0,245,255,0.55)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8"  y1="23" x2="16" y2="23"/>
+          </svg>
+        </div>
+        <input id="inputText"
+          placeholder="ENTER TEXT FOR SDG ANALYSIS..."
+          oninput="document.getElementById('charC').textContent=this.value.length+' CHR'"
+          onkeydown="if(event.key==='Enter')runAnalysis()"/>
+        <span class="char-c" id="charC">0 CHR</span>
+      </div>
+
+      <button class="go-btn" id="goBtn" onclick="runAnalysis()">
+        <div class="btn-pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>
+        INITIALIZE NEURAL SCAN
+      </button>
+
+      <!-- RESULTS -->
+      <div class="results" id="results">
+
+        <div class="slabel" style="margin-bottom:18px;">ANALYSIS OUTPUT</div>
+
+        <div class="data-grid">
+          <div class="dcell">
+            <div class="dc-label">TARGET SDG</div>
+            <div class="dc-val sdg" id="sdg_display">---</div>
+          </div>
+          <div class="dcell">
+            <div class="dc-label">CONFIDENCE</div>
+            <div class="dc-val conf" id="confidence_display">---</div>
+          </div>
+        </div>
+
+        <div class="kw-area">
+          <div class="slabel" style="font-size:8px;margin-bottom:10px;">KEYWORD VECTORS</div>
+          <div class="kw-row" id="kw_display"></div>
+        </div>
+
+        <div class="impact-wrap">
+          <div class="impact-hdr">
+            <span>IMPACT VECTOR</span>
+            <span class="impact-val" id="impact_display">---</span>
+          </div>
+          <div class="segs" id="segs"></div>
+        </div>
+
+        <div class="insight" style="margin-bottom:4px;">
+          <div class="insight-hdr">AI ANALYSIS</div>
+          <div class="insight-txt" id="insight_display">
+            Calibrating neural pathways against orbital database...<span class="cursor"></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT DECORATIVE PANEL -->
+  <div class="side-panel right">
+    <div class="sp-title">ORBITAL SWEEP</div>
+    <div class="radar-wrap">
+      <svg class="radar-scope" viewBox="0 0 130 130">
+        <defs>
+          <radialGradient id="rg" cx="50%" cy="50%">
+            <stop offset="0%" stop-color="rgba(0,245,255,0.35)"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+        </defs>
+        <circle cx="65" cy="65" r="60" stroke="rgba(0,245,255,0.09)" stroke-width="1" fill="none"/>
+        <circle cx="65" cy="65" r="43" stroke="rgba(0,245,255,0.12)" stroke-width="1" fill="none"/>
+        <circle cx="65" cy="65" r="25" stroke="rgba(0,245,255,0.14)" stroke-width="1" fill="none"/>
+        <circle cx="65" cy="65" r="8"  stroke="rgba(0,245,255,0.4)"  stroke-width="1" fill="rgba(0,245,255,0.04)"/>
+        <line x1="65" y1="5" x2="65" y2="125" stroke="rgba(0,245,255,0.06)" stroke-width="1"/>
+        <line x1="5" y1="65" x2="125" y2="65" stroke="rgba(0,245,255,0.06)" stroke-width="1"/>
+        <g class="radar-sweep-g">
+          <path d="M65,65 L65,5 A60,60 0 0,1 115,87 Z" fill="url(#rg)" opacity="0.45"/>
+          <line x1="65" y1="65" x2="65" y2="5" stroke="rgba(0,245,255,0.55)" stroke-width="1.5"/>
+        </g>
+        <circle cx="90" cy="35" r="2.5" fill="var(--cyan)"    class="r-blip" style="animation-delay:1s"/>
+        <circle cx="42" cy="95" r="2"   fill="var(--magenta)" class="r-blip" style="animation-delay:2.2s"/>
+        <circle cx="80" cy="88" r="2"   fill="var(--amber)"   class="r-blip" style="animation-delay:0.7s"/>
+      </svg>
+    </div>
+
+    <div class="sp-title">SDG MATRIX</div>
+    <div class="sdg-list">
+      <div class="sdg-row"><span>SDG_01</span><span class="v">LOW</span></div>
+      <div class="sdg-row"><span>SDG_03</span><span class="v">MED</span></div>
+      <div class="sdg-row hi"><span>SDG_07</span><span class="v">HIGH ▲</span></div>
+      <div class="sdg-row"><span>SDG_11</span><span class="v">MED</span></div>
+      <div class="sdg-row"><span>SDG_13</span><span class="v">LOW</span></div>
+      <div class="sdg-row"><span>SDG_17</span><span class="v">MED</span></div>
+    </div>
+
+    <div class="sp-title" style="margin-top:6px;">BANDWIDTH</div>
+    <div>
+      <div style="font-family:var(--mono);font-size:7px;color:rgba(0,245,255,0.35);display:flex;justify-content:space-between;margin-bottom:3px;"><span>TX</span><span>4.2 GB/s</span></div>
+      <div class="mm-bar" style="margin-bottom:8px;"><div class="mm-fill" style="width:65%;background:linear-gradient(90deg,var(--amber),var(--magenta))"></div></div>
+      <div style="font-family:var(--mono);font-size:7px;color:rgba(0,245,255,0.35);display:flex;justify-content:space-between;margin-bottom:3px;"><span>RX</span><span>1.8 GB/s</span></div>
+      <div class="mm-bar"><div class="mm-fill" style="width:28%"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM BAR -->
+<div class="bot-bar">
+  <div class="ticker">
+    <span class="ticker-inner">◆ STARK_NEURAL_NET v4.7.2 &nbsp;&nbsp; ◆ SATELLITE_UPLINK: SECURE &nbsp;&nbsp; ◆ SDG_DATABASE: 17 GOALS LOADED &nbsp;&nbsp; ◆ QUANTUM_ENCRYPTION: ENABLED &nbsp;&nbsp; ◆ ORBITAL_ANALYSIS: READY &nbsp;&nbsp; ◆ PROCESSING_NODES: 2,048 &nbsp;&nbsp; ◆ AI SUBSYSTEM: NOMINAL &nbsp;&nbsp;</span>
+  </div>
+  <div class="bot-right">
+    <span><span class="dot" style="animation-delay:.2s"></span>NODE_A</span>
+    <span><span class="dot" style="animation-delay:.5s"></span>NODE_B</span>
+    <span><span class="dot mag" style="animation-delay:.8s"></span>RELAY</span>
+  </div>
+</div>
+
+<script>
+// ===== CANVAS BG =====
+const cvs = document.getElementById('bgCanvas');
+const cx  = cvs.getContext('2d');
+let W, H, pts = [];
+
+function resize() {
+  W = cvs.width  = window.innerWidth;
+  H = cvs.height = window.innerHeight;
+  pts = Array.from({length: Math.floor(W*H/13000)}, () => ({
+    x: Math.random()*W, y: Math.random()*H,
+    vx: (Math.random()-.5)*.28, vy: (Math.random()-.5)*.28,
+    r: Math.random()*1.4+.4, p: Math.random()*Math.PI*2
+  }));
+}
+
+(function loop(){
+  cx.clearRect(0,0,W,H);
+  for(const n of pts){ n.x+=n.vx; n.y+=n.vy; if(n.x<0||n.x>W)n.vx*=-1; if(n.y<0||n.y>H)n.vy*=-1; n.p+=.018; }
+  for(let i=0;i<pts.length;i++)
+    for(let j=i+1;j<pts.length;j++){
+      const d=Math.hypot(pts[i].x-pts[j].x,pts[i].y-pts[j].y);
+      if(d<115){ cx.beginPath(); cx.moveTo(pts[i].x,pts[i].y); cx.lineTo(pts[j].x,pts[j].y); cx.strokeStyle=`rgba(0,245,255,${(1-d/115)*.13})`; cx.lineWidth=.5; cx.stroke(); }
+    }
+  for(const n of pts){
+    const g=(Math.sin(n.p)+1)*.5;
+    cx.beginPath(); cx.arc(n.x,n.y,n.r,0,Math.PI*2);
+    cx.fillStyle=`rgba(0,245,255,${.25+g*.5})`; cx.fill();
+  }
+  requestAnimationFrame(loop);
+})();
+window.addEventListener('resize', resize);
+resize();
+
+// ===== CLOCK =====
+setInterval(()=>{
+  const t=new Date();
+  document.getElementById('liveClock').textContent=
+    [t.getHours(),t.getMinutes(),t.getSeconds()].map(v=>String(v).padStart(2,'0')).join(':');
+}, 1000);
+
+// ===== PARTICLES =====
+function spawnPts(){
+  const f=document.getElementById('pfield');
+  f.innerHTML='';
+  for(let i=0;i<18;i++){
+    const p=document.createElement('div');
+    p.className='pt';
+    p.style.left=(Math.random()*100)+'%'; p.style.bottom='0';
+    p.style.setProperty('--dx',(Math.random()*60-30)+'px');
+    p.style.animationDuration=(2+Math.random()*2)+'s';
+    p.style.animationDelay=(Math.random()*1.4)+'s';
+    f.appendChild(p);
+  }
+  f.classList.add('on');
+  setTimeout(()=>f.classList.remove('on'),4000);
+}
+
+// ===== IMPACT SEGS =====
+function setSegs(level){
+  const c=document.getElementById('segs'); c.innerHTML='';
+  const map={LOW:3,MEDIUM:6,HIGH:9,CRITICAL:12};
+  const n=map[(level||'').toUpperCase()]||5;
+  for(let i=0;i<12;i++){
+    const s=document.createElement('div');
+    s.className='seg'+(i<n?' on':'');
+    if(i<n) s.style.animationDelay=(i*.04)+'s';
+    c.appendChild(s);
+  }
+}
+
+// ===== TYPEWRITER =====
+function typewrite(el,txt,spd=18){
+  el.innerHTML='';
+  let i=0;
+  const cur=document.createElement('span'); cur.className='cursor'; el.appendChild(cur);
+  (function t(){ if(i<txt.length){ el.insertBefore(document.createTextNode(txt[i++]),cur); setTimeout(t,spd); } else { cur.remove(); } })();
+}
+
+// ===== ANALYSIS =====
+async function runAnalysis(){
+  const txt = document.getElementById('inputText').value.trim();
+  if(!txt){
+    const fl=document.createElement('div'); fl.className='eflash'; document.body.appendChild(fl);
+    setTimeout(()=>fl.remove(),500);
+    const inp=document.getElementById('inputText');
+    inp.style.borderColor='rgba(255,50,50,0.6)';
+    setTimeout(()=>inp.style.borderColor='',700);
+    return;
+  }
+
+  const btn   = document.getElementById('goBtn');
+  const laser = document.getElementById('laser');
+  const res   = document.getElementById('results');
+
+  btn.classList.add('busy'); btn.textContent='SCANNING...';
+  laser.classList.add('on'); setTimeout(()=>laser.classList.remove('on'),1800);
+  spawnPts();
+
+  res.classList.add('show');
+  res.innerHTML=`
+    <div class="slabel" style="margin-bottom:18px;">PROCESSING</div>
+    <div class="shim" style="width:88%"></div>
+    <div class="shim" style="width:66%"></div>
+    <div class="shim" style="width:76%"></div>
+    <div class="shim" style="width:55%"></div>
+  `;
+
+  try {
+    const r = await fetch('http://127.0.0.1:5000/predict',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({text: txt})
+    });
+    const d = await r.json();
+
+    res.innerHTML=`
+      <div class="slabel" style="margin-bottom:18px;">ANALYSIS OUTPUT</div>
+      <div class="data-grid">
+        <div class="dcell"><div class="dc-label">TARGET SDG</div><div class="dc-val sdg" id="sdg_display">---</div></div>
+        <div class="dcell"><div class="dc-label">CONFIDENCE</div><div class="dc-val conf" id="confidence_display">---</div></div>
+      </div>
+      <div class="kw-area">
+        <div class="slabel" style="font-size:8px;margin-bottom:10px;">KEYWORD VECTORS</div>
+        <div class="kw-row" id="kw_display"></div>
+      </div>
+      <div class="impact-wrap">
+        <div class="impact-hdr"><span>IMPACT VECTOR</span><span class="impact-val" id="impact_display">---</span></div>
+        <div class="segs" id="segs"></div>
+      </div>
+      <div class="insight" style="margin-bottom:4px;">
+        <div class="insight-hdr">AI ANALYSIS</div>
+        <div class="insight-txt" id="insight_display"></div>
+      </div>
+    `;
+
+    setTimeout(()=>{
+      document.getElementById('sdg_display').textContent          = d.sdg || 'N/A';
+      document.getElementById('confidence_display').textContent   = ((d.confidence||0)*100).toFixed(1)+'%';
+      document.getElementById('impact_display').textContent       = d.impact || 'N/A';
+
+      const kc=document.getElementById('kw_display');
+      (d.keywords||'').split(',').map(k=>k.trim()).filter(Boolean).forEach((kw,i)=>{
+        const t=document.createElement('span'); t.className='kw-tag'; t.textContent=kw;
+        t.style.animationDelay=(i*.08)+'s'; kc.appendChild(t);
+      });
+
+      setSegs(d.impact);
+      typewrite(document.getElementById('insight_display'), d.insight||'Analysis complete.');
+    }, 150);
+
+  } catch(e) {
+    res.innerHTML=`
+      <div class="insight" style="border-left-color:rgba(255,50,50,0.5)">
+        <div class="insight-hdr" style="color:rgba(255,80,80,0.85)">CONNECTION FAILURE</div>
+        <div class="insight-txt" style="color:rgba(255,150,150,0.75)">Unable to reach backend at 127.0.0.1:5000. Verify the server is running.</div>
+      </div>`;
+  } finally {
+    btn.classList.remove('busy');
+    btn.innerHTML=`<div class="btn-pips"><div class="pip"></div><div class="pip"></div><div class="pip"></div></div>INITIALIZE NEURAL SCAN`;
+  }
+}
+</script>
+</body>
+</html>
